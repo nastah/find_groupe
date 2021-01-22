@@ -36,17 +36,17 @@ class dotOnMap
         int endTime;
         int dist;
 
-        void addNeighbours(dotOnMap &target )
+        void addNeighbours(dotOnMap target )
         {
             neighbours++;
-            if (target.time > time)
+            if (target.time > this->time)
             {
-                endTime = target.time;
+                this->endTime = target.time;
             }
             
-            if (target.time < time)
+            if (target.time < this->time)
             {
-                startTime = target.time;
+                this->startTime = target.time;
             }
         }
         dotOnMap(int stime, double slat, double slon)
@@ -71,12 +71,10 @@ class dotOnMap
 };
 
 
-
-
 int distance (dotOnMap   ,dotOnMap );
 void softFilterDot(vector <dotOnMap> &);
 void hardFlterDot(dotOnMap   );
-vector<int> findStops(vector <dotOnMap> );
+vector<int> findStops(vector <dotOnMap>  &);
 
 
 
@@ -84,7 +82,7 @@ void softFilterDot(vector <dotOnMap>  &target)
 {   
 
     if (target.size()<12){throw "too short";}
-    int maxVelocity = 1;//250;
+    double maxVelocity = 70;//250;
     vector<double> testdist;
     for (int i =0; i< 10;i++)
     {   
@@ -92,13 +90,13 @@ void softFilterDot(vector <dotOnMap>  &target)
         //if (distance (target[i], target[i + 1]) > 1);
         //target.erase(target.begin()+i);
     }
-    if (testdist[0] * (target[1].time - target[0].time) > maxVelocity )
+    if (testdist[0] / double(target[1].time - target[0].time) > maxVelocity )
     {
         target[0].time = -1;
     }
     for (int i =1; i< 10;i++)
     {   
-        if (testdist[i] * (target[i+1].time - target[i].time )> maxVelocity && testdist[i-1] *( target[i].time - target[i-1].time) > maxVelocity)
+        if (testdist[i] / double(target[i+1].time - target[i].time )> maxVelocity && testdist[i-1] / double( target[i].time - target[i-1].time) > maxVelocity)
         {
             target[i].time = -1;
         }
@@ -108,9 +106,11 @@ void softFilterDot(vector <dotOnMap>  &target)
         if (target[i].time < 0){target.erase(target.begin()+i);}
     }
 
-    for (int i =0; i < target.size() - 1  ;i++)
+    for (int i =target.size() - 1 ; i > 0  ;i--)
     {
-        if (distance (target[i], target[i + 1]) * (target[i+1].time - target[i].time) > maxVelocity )
+
+
+        if (double(distance(target[i], target[i + 1])) / double(target[i+1].time - target[i].time) > maxVelocity )
         {
             target[i+1].time = -1;
         }
@@ -120,20 +120,19 @@ void softFilterDot(vector <dotOnMap>  &target)
     while (maxSize > 0)
     {
         if (target[maxSize].time < 0){
-            target.erase(target.begin()+maxSize);
 
+            target.erase(target.begin()+maxSize);
             }
         maxSize--;
     }
-    
 }
 
 bool isIntersect(dotOnMap aim,dotOnMap  dot)
 {   
-    double disTreshold=0.0008f;//0.0018;
+    double disTreshold=1.28f;//0.0018;
     double csln =cos(aim.lon * (M_PI/180));
-    double ltMax = aim.lat + (disTreshold * csln);
 
+    double ltMax = aim.lat + (disTreshold * csln);
     double ltMin = aim.lat - (disTreshold * csln);
     double lnMax = aim.lon + disTreshold;
     double lnMin =  aim.lon - disTreshold;
@@ -143,12 +142,12 @@ bool isIntersect(dotOnMap aim,dotOnMap  dot)
     {
 
         return true;
-        
+
     }
     else{return false;}
 }
 
-vector<int> findStops(vector <dotOnMap> target )
+vector<int> findStops(vector <dotOnMap> &target )
 {
     int j;
     for (int i = 2; i < target.size() -2 ;i++)
@@ -156,11 +155,8 @@ vector<int> findStops(vector <dotOnMap> target )
 
         j = 1; 
      
-
         while (i -j > 1 && j + i + 1 < target.size()  && ((isIntersect(target[i], target[i-j] ) || isIntersect(target[i], target[i+j]) || isIntersect(target[i], target[i- j -1])) || isIntersect(target[i], target[i+j +1]) ))
         {   
-
-
             if(isIntersect(target[i], target[i-j]))
             {
                 target[i].addNeighbours(target[i-j]);
@@ -172,22 +168,23 @@ vector<int> findStops(vector <dotOnMap> target )
             j++;
 
         }
-        
-
     }
+
+
     vector <int> stops;
     int timeOfStop =10*60 ;
     for (int i =0; i < target.size()  ;i++)
     {
-        if (target[i].getTime() < timeOfStop)
+        if (target[i].getTime() > timeOfStop)
         {
             stops.push_back(i);
         }
     }
     int quantDot= 0;
+
     while (quantDot < stops.size() -1 )
     {
-        if (target[quantDot].endTime > target[quantDot+1].startTime) 
+        if (target[quantDot].endTime >= target[quantDot+1].startTime) 
         {
             
             if (target[stops[quantDot]].neighbours < target[stops[quantDot+1]].neighbours) 
@@ -199,7 +196,9 @@ vector<int> findStops(vector <dotOnMap> target )
         else{quantDot++;}
         
     }
+    cout<<"/v/"<<stops.size() ;
     return stops;
+
 }
 
 /*double distance (dotOnMap first  ,dotOnMap second)
@@ -219,7 +218,7 @@ int distance (dotOnMap first  ,dotOnMap second)
     double Lat2 = second.lat;
     double Lon1 = first.lon;
     double Lon2 =second.lon;
-    Lat1 - Lat1 * M_PI/180; Lat2 = Lat2 * M_PI/180;
+    Lat1 = Lat1 * M_PI/180; Lat2 = Lat2 * M_PI/180;
     Lon1 = Lon1 * M_PI/180; Lon2 = Lon2 * M_PI/180;
     double coslat1 = cos(Lat1);
     double coslat2 = cos (Lat2);
@@ -231,6 +230,7 @@ int distance (dotOnMap first  ,dotOnMap second)
     double y = sqrt( pow( coslat2 * sinDelta, 2) + pow(coslat1 * sinlat2 - sinlat1 * coslat2 * cosDelta, 2));
     double x = sinlat1 * sinlat2 + coslat1 * coslat2 * cosDelta;
     double ad = atan2(y,x);
+
     double distres = ad * 6372795;
     return distres;
 }
@@ -272,6 +272,7 @@ string stopFinder::getjson()
     for (int i = 0; i< arrayOfStops.size(); i++)
     {
         ell =arrayOfStops[i];
+        cout<<"e"<<ell<<"/v/"<<arrayToOut[ell].neighbours;
         j["state"]="ARRIVAL";
         j["t1"]=arrayToOut[ell].startTime;
         j["t2"]=arrayToOut[ell].endTime;
@@ -284,8 +285,6 @@ string stopFinder::getjson()
         j.clear();
     }
     return jstoout.dump();
-    
-
 }
 
 
